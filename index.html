@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador VBS</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #080808;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #2e2e2e;
+    --accent: #ffffff;
+    --accent2: #cccccc;
+    --green: #3dd68c;
+    --red: #f75f5f;
+    --yellow: #f7c948;
+    --orange: #e0e0e0;
+    --text: #f0f0f0;
+    --muted: #666666;
+    --code-bg: #050505;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    border-bottom: 1px solid #222;
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #000;
+  }
+
+  .logo {
+    width: 44px; height: 44px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    object-fit: contain;
+    background: #000;
+  }
+
+  header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.2px; }
+
+  .header-badge {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    margin-left: auto;
+    background: var(--surface2);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+
+  /* MODE TABS (top level) */
+  .mode-bar {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    gap: 0;
+  }
+
+  .mode-tab {
+    padding: 12px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .mode-tab:hover { color: var(--text); }
+  .mode-tab.active { color: #fff; border-bottom-color: #fff; }
+  .mode-tab.soundpad.active { color: #fff; border-bottom-color: #fff; }
+
+  .mode-icon { font-size: 16px; }
+
+  .main {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    flex: 1;
+    min-height: 0;
+    height: calc(100vh - 115px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sidebar-section {
+    padding: 20px 20px 0;
+  }
+
+  .sidebar-section + .sidebar-section {
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+    margin-top: 20px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .cat-tabs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .cat-tab {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all .15s;
+  }
+
+  .cat-tab:hover { border-color: #fff; color: #fff; }
+  .cat-tab.active { background: #fff; border-color: #fff; color: #111; }
+
+  .script-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-bottom: 20px;
+  }
+
+  .script-card {
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all .15s;
+    background: var(--surface2);
+  }
+
+  .script-card:hover { border-color: rgba(255,255,255,.5); }
+  .script-card.selected { border-color: #fff; background: rgba(255,255,255,.05); }
+
+  .script-card-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+  .script-card-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+  .script-tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .tag-auto   { background: rgba(61,214,140,.1);  color: var(--green); }
+  .tag-file   { background: rgba(247,201,72,.1);  color: var(--yellow); }
+  .tag-net    { background: rgba(124,92,252,.1);  color: var(--accent2); }
+  .tag-sound  { background: rgba(255,159,67,.12); color: var(--orange); }
+
+  .params-panel { padding: 0 20px 20px; }
+
+  .param-group { margin-bottom: 14px; }
+
+  .param-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    display: block;
+    font-weight: 500;
+  }
+
+  .param-input, .param-select, .param-textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border .15s;
+    resize: vertical;
+  }
+
+  .param-input:focus, .param-select:focus, .param-textarea:focus { border-color: rgba(255,255,255,.5); }
+  .param-select option { background: var(--surface2); }
+
+  .qty-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .qty-btn {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+    flex-shrink: 0;
+  }
+
+  .qty-btn:hover { border-color: #fff; color: #fff; }
+
+  .qty-input {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    width: 56px;
+    text-align: center;
+    color: #fff;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 6px;
+    outline: none;
+    transition: border .15s;
+    -moz-appearance: textfield;
+  }
+  .qty-input::-webkit-outer-spin-button,
+  .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .qty-input:focus { border-color: #fff; }
+
+  .gen-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #444;
+    background: linear-gradient(135deg, #2a2a2a, #111);
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+    margin-top: 4px;
+  }
+
+  .gen-btn.soundpad-btn {
+    background: linear-gradient(135deg, #333, #1a1a1a);
+  }
+
+  .gen-btn:hover { opacity: .9; }
+  .gen-btn:active { transform: scale(.98); }
+
+  /* SCRIPT MODE CARDS */
+  .script-mode-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .script-mode-card {
+    padding: 11px 13px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    transition: all .15s;
+  }
+
+  .script-mode-card:hover { border-color: rgba(255,255,255,.5); }
+
+  .script-mode-card.selected {
+    border-color: #fff;
+    background: rgba(255,255,255,.05);
+  }
+
+  .script-mode-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+
+  .script-mode-check {
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    opacity: 0;
+    transition: opacity .15s;
+    flex-shrink: 0;
+  }
+
+  .script-mode-card.selected .script-mode-check { opacity: 1; }
+
+  .script-mode-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .script-mode-desc {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.5;
+    padding-left: 19px;
+  }
+
+  .script-mode-desc code {
+    font-family: 'JetBrains Mono', monospace;
+    color: rgba(255,255,255,.7);
+    font-size: 10px;
+  }
+
+
+  .soundpad-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .sp-info-box {
+    margin: 20px 20px 0;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.1);
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .sp-info-box strong { color: #fff; }
+
+  /* OUTPUT AREA */
+  .output-area {
+    display: flex;
+    flex-direction: column;
+    background: var(--code-bg);
+    overflow: hidden;
+  }
+
+  .output-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .output-toolbar-title {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .output-toolbar-title strong { color: var(--text); }
+
+  .toolbar-right {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+  }
+
+  .tool-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tool-btn:hover { border-color: #fff; color: #fff; }
+  .tool-btn.download { background: rgba(61,214,140,.1); border-color: var(--green); color: var(--green); }
+  .tool-btn.download:hover { background: rgba(61,214,140,.18); }
+  .tool-btn.zip-btn { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.4); color: rgba(255,255,255,.7); }
+  .tool-btn.zip-btn:hover { background: rgba(255,255,255,.13); border-color: #fff; color: #fff; }
+
+  .file-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+
+  .file-tab {
+    padding: 8px 16px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .file-tab:hover { color: var(--text); }
+  .file-tab.active { color: #fff; border-bottom-color: #fff; }
+  .file-tab.active.sp { color: #fff; border-bottom-color: #fff; }
+
+  .file-tab .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .file-tab.active.sp .dot { background: #fff; }
+
+  .code-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  pre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: #c8d3f5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    gap: 12px;
+    padding: 40px;
+  }
+
+  .empty-icon { font-size: 48px; opacity: .3; }
+  .empty-state p { font-size: 14px; }
+
+  .kw  { color: #c792ea; }
+  .str { color: #c3e88d; }
+  .cmt { color: #546e7a; font-style: italic; }
+  .fn  { color: #82aaff; }
+  .num { color: #f78c6c; }
+  .obj { color: #ffcb6b; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--green);
+    color: var(--green);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all .25s;
+    pointer-events: none;
+    z-index: 99;
+  }
+
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* Hidden panels */
+  .panel { display: none; }
+  .panel.active { display: contents; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+
+<header>
+  <img class="logo" src="data:image/jpeg;base64,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" alt="VBS Logo">
+  <h1>Gerador de Scripts VBS</h1>
+  <span class="header-badge">Windows Script Host</span>
+</header>
+
+<!-- TOP MODE BAR -->
+<div class="mode-bar">
+  <button class="mode-tab soundpad active" id="tabSoundpad">
+    <span class="mode-icon">🎵</span> Soundpad
+  </button>
+</div>
+
+<div class="main">
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+
+    <!-- === SOUNDPAD MODE === -->
+    <div id="soundpadPanel">
+      <div class="sp-info-box">
+        Gera um <strong>.vbs por música</strong> do Soundpad.<br>
+        Escolha o <strong>modo do script</strong>: toggle (toca/para) ou só tocar.<br>
+        Arquivo de estado: <strong>stateN.txt</strong> na mesma pasta (modo toggle).
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-label">Caminho do Soundpad</div>
+        <div class="params-panel" style="padding-top:0">
+          <div class="param-group">
+            <label class="param-label">Executável do Soundpad</label>
+            <input class="param-input" id="sp_path" type="text" value="C:\Program Files (x86)\Steam\steamapps\common\Soundpad\Soundpad.exe">
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-label">Configuração dos arquivos</div>
+        <div class="params-panel" style="padding-top:0">
+          <div class="param-group">
+            <label class="param-label">Prefixo do nome do arquivo</label>
+            <input class="param-input" id="sp_prefix" type="text" value="Som" placeholder="Ex: Som → Som01.vbs, Som02.vbs">
+          </div>
+          <div class="param-group">
+            <label class="param-label">Índice inicial da música no Soundpad</label>
+            <input class="param-input" id="sp_startindex" type="number" value="1" min="1">
+          </div>
+          <div class="param-group">
+            <label class="param-label">Quantidade de scripts a gerar</label>
+            <div class="qty-row">
+              <button class="qty-btn" onclick="changeSPQty(-1)">−</button>
+              <input class="qty-input" id="spQtyDisplay" type="number" value="5" min="1" max="200"
+                onchange="setSPQtyFromInput(this.value)"
+                oninput="setSPQtyFromInput(this.value)">
+              <button class="qty-btn" onclick="changeSPQty(1)">+</button>
+              <span style="font-size:12px;color:var(--muted);margin-left:4px">scripts</span>
+            </div>
+          </div>
+          <div class="param-group">
+            <label class="param-label">Padding do número no nome (dígitos)</label>
+            <select class="param-select" id="sp_pad">
+              <option value="1">Sem padding (1, 2, 3...)</option>
+              <option value="2" selected>2 dígitos (01, 02, 03...)</option>
+              <option value="3">3 dígitos (001, 002, 003...)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-label">Modo do Script</div>
+        <div class="params-panel" style="padding-top:0">
+          <div class="param-group">
+            <label class="param-label">Escolha o comportamento ao executar</label>
+            <div class="script-mode-list">
+              <div class="script-mode-card selected" id="mode0" onclick="selectMode(0)">
+                <div class="script-mode-header">
+                  <span class="script-mode-check">✓</span>
+                  <span class="script-mode-name">🔁 Toggle Toca / Para</span>
+                </div>
+                <div class="script-mode-desc">Executa ao clicar. Clica de novo para parar. Usa arquivo <code>stateN.txt</code> como controle.</div>
+              </div>
+              <div class="script-mode-card" id="mode1" onclick="selectMode(1)">
+                <div class="script-mode-header">
+                  <span class="script-mode-check">✓</span>
+                  <span class="script-mode-name">▶ Só Tocar</span>
+                </div>
+                <div class="script-mode-desc">Apenas inicia a reprodução do som. Simples e direto, sem controle de estado.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="params-panel" style="padding-top:0">
+          <button class="gen-btn soundpad-btn" onclick="generateSoundpad()">🎵 Gerar Scripts Soundpad</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- OUTPUT -->
+  <div class="output-area" id="outputArea">
+    <div class="empty-state">
+      <div class="empty-icon">🎵</div>
+      <p>Configure e clique em <strong>Gerar Scripts Soundpad</strong></p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+let spQty          = 5;
+let generatedFiles = [];
+let activeFile     = 0;
+let selectedMode   = 0; // 0 = Toggle, 1 = Só Tocar
+
+function selectMode(n) {
+  selectedMode = n;
+  document.querySelectorAll('.script-mode-card').forEach((el, i) => {
+    el.classList.toggle('selected', i === n);
+  });
+}
+
+// =====================
+// SOUNDPAD MODE
+// =====================
+function changeSPQty(delta) {
+  spQty = Math.max(1, Math.min(200, spQty + delta));
+  document.getElementById('spQtyDisplay').value = spQty;
+}
+
+function setSPQtyFromInput(val) {
+  const n = parseInt(val);
+  if (!isNaN(n)) spQty = Math.max(1, Math.min(200, n));
+}
+
+function generateSoundpadVBS(soundpadPath, index) {
+  if (selectedMode === 1) {
+    // Modo: Só Tocar
+    return `Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run """${soundpadPath}"" -rc DoPlaySound(${index})", 0, False`;
+  }
+  // Modo: Toggle Toca / Para
+  return `Set sh = CreateObject("WScript.Shell")
+Set fso = CreateObject("Scripting.FileSystemObject")
+soundpad = """${soundpadPath}"""
+path = fso.GetParentFolderName(WScript.ScriptFullName) & "\\state${index}.txt"
+
+If fso.FileExists(path) Then
+    fso.DeleteFile path
+    sh.Run soundpad & " -rc DoStopSound()", 0, False
+Else
+    Set file = fso.CreateTextFile(path, True)
+    file.Write "${index}"
+    file.Close
+    sh.Run soundpad & " -rc DoPlaySound(${index})", 0, False
+End If`;
+}
+
+function generateSoundpad() {
+  const spPath   = document.getElementById('sp_path').value.trim();
+  const prefix   = document.getElementById('sp_prefix').value.trim() || 'Som';
+  const startIdx = parseInt(document.getElementById('sp_startindex').value) || 1;
+  const pad      = parseInt(document.getElementById('sp_pad').value) || 2;
+
+  if (!spPath) { showToast('⚠ Informe o caminho do Soundpad!', 'var(--red)'); return; }
+
+  generatedFiles = [];
+  for (let i = 0; i < spQty; i++) {
+    const idx      = startIdx + i;
+    const numStr   = String(idx).padStart(pad, '0');
+    const filename = `${prefix}${numStr}.vbs`;
+    generatedFiles.push({
+      name: filename,
+      code: generateSoundpadVBS(spPath, idx),
+      sp: true
+    });
+  }
+  activeFile = 0;
+  renderOutput();
+  showToast(`🎵 ${spQty} script${spQty>1?'s':''} Soundpad gerado${spQty>1?'s':''}!`, 'var(--orange)');
+}
+
+// =====================
+// RENDER OUTPUT
+// =====================
+function renderOutput() {
+  const area = document.getElementById('outputArea');
+  if (!generatedFiles.length) {
+    area.innerHTML = `<div class="empty-state"><div class="empty-icon">📄</div><p>Nenhum arquivo gerado ainda.</p></div>`;
+    return;
+  }
+
+  const isSP = generatedFiles[0].sp;
+  const tabsHtml = generatedFiles.map((f, i) =>
+    `<div class="file-tab ${i===activeFile?'active':''}${isSP&&i===activeFile?' sp':''}" onclick="setActiveFile(${i})">
+      <div class="dot" style="${i===activeFile?isSP?'background:#fff':'':'background:var(--border)'}"></div>
+      ${f.name}
+    </div>`
+  ).join('');
+
+  const dlAllBtn = generatedFiles.length > 1
+    ? `<button class="tool-btn download" onclick="downloadAll()">⬇ Baixar VBS (${generatedFiles.length})</button>
+       <button class="tool-btn zip-btn" onclick="downloadZip()">🗜 Baixar ZIP</button>`
+    : '';
+
+  area.innerHTML = `
+    <div class="output-toolbar">
+      <span class="output-toolbar-title">Saída — <strong>${generatedFiles.length} arquivo${generatedFiles.length>1?'s':''}</strong></span>
+      <div class="toolbar-right">
+        <button class="tool-btn" onclick="copyCode()">📋 Copiar</button>
+        <button class="tool-btn download" onclick="downloadCurrent()">⬇ Baixar .vbs</button>
+        ${dlAllBtn}
+      </div>
+    </div>
+    <div class="file-tabs">${tabsHtml}</div>
+    <div class="code-wrapper">
+      <pre id="codeBlock">${highlight(generatedFiles[activeFile].code)}</pre>
+    </div>
+  `;
+}
+
+function setActiveFile(i) {
+  activeFile = i;
+  renderOutput();
+}
+
+// =====================
+// SYNTAX HIGHLIGHT
+// =====================
+function highlight(code) {
+  return code
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/'[^\n]*/g, m => `<span class="cmt">${m}</span>`)
+    .replace(/\b(Dim|Set|If|Then|Else|End|Do|While|For|Each|In|Next|Loop|Exit|Function|Sub|Call|Nothing|True|False|Not|And|Or|New|With|Return)\b/g, '<span class="kw">$1</span>')
+    .replace(/"([^"]*)"/g, '<span class="str">"$1"</span>')
+    .replace(/\b(WScript|MsgBox|CreateObject|GetObject|Now|Round|LCase|vbCrLf|vbYes|vbOK)\b/g, '<span class="fn">$1</span>')
+    .replace(/\b(fso|oShell|arquivo|pasta|colecao|objWMI|colItems|objItem|oExec|sh|file|path|soundpad)\b/g, '<span class="obj">$1</span>')
+    .replace(/\b(\d+)\b/g, '<span class="num">$1</span>');
+}
+
+// =====================
+// DOWNLOAD
+// =====================
+function downloadCurrent() {
+  const f = generatedFiles[activeFile];
+  triggerDownload(f.name, f.code);
+  showToast(`⬇ ${f.name} baixado!`);
+}
+
+async function downloadZip() {
+  const zip = new JSZip();
+  generatedFiles.forEach(f => zip.file(f.name, f.code));
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'scripts_soundpad.zip';
+  a.click();
+  showToast(`🗜 ZIP com ${generatedFiles.length} scripts baixado!`, 'var(--accent2)');
+}
+
+function downloadAll() {
+  generatedFiles.forEach(f => triggerDownload(f.name, f.code));
+  showToast(`⬇ ${generatedFiles.length} arquivos baixados!`);
+}
+
+function triggerDownload(name, content) {
+  const blob = new Blob([content], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(generatedFiles[activeFile].code).then(() =>
+    showToast('✓ Copiado para a área de transferência!')
+  );
+}
+
+// =====================
+// TOAST
+// =====================
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = color || 'var(--green)';
+  t.style.color       = color || 'var(--green)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// INIT
+</script>
+</body>
+</html>
